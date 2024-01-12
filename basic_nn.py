@@ -135,3 +135,13 @@ with torch.no_grad():
   y_val = model.forward(new_iris)
   print(y_val.argmax().item())
 
+
+# Save model
+
+torch.save(model.state_dict(), 'iris_model_1.pt')
+
+# Load model:
+
+new_model = Model()
+new_model.load_state_dict(torch.load('iris_model_1.pt'))
+print(new_model.eval())
