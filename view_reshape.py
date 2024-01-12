@@ -29,6 +29,8 @@ my_torch5[1] = 2265
 
 print(my_torch6) # Reference to my_torch5
 
+#View is guaranteed a view/reference to a tensor, reshape can be a view or a copy
+
 # Slices
 my_torch7 = torch.arange(10)
 print(my_torch7)
