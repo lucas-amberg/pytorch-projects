@@ -10,6 +10,8 @@ import pandas as pd
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 
+import time
+
 # Convert MNIST into tensors (# images, height, width, color channel)
 transform = transforms.ToTensor()
 
@@ -65,10 +67,10 @@ x = F.max_pool2d(x, 2, 2)
 
 print(x.shape) # Shows [1, 6, 5, 5] because 1 image, 6 filters, 5 x 5 size because 11 // 2 is 5 and we can't round to 6 because false data cannot be manufactured.
 
-class ConvolutionalNetwork(NN.module):
+class ConvolutionalNetwork(NN.Module):
 
   def __init__(self):
-    super().__init_()
+    super().__init__()
     self.conv1 = NN.Conv2d(1, 6, 3, 1) # Convolutional layer 1
     self.conv2 = NN.Conv2d(6, 16, 3, 1) # Convolutional layer 2
     
@@ -80,7 +82,7 @@ class ConvolutionalNetwork(NN.module):
 
   # Forward function
   def forward(self, X):
-    X = F.relu(self.conv1(x))
+    X = F.relu(self.conv1(X))
     X = F.max_pool2d(X, 2, 2) # 2x2 Kernel, stride of 2
 
     # Second pass
@@ -89,7 +91,7 @@ class ConvolutionalNetwork(NN.module):
     X = F.max_pool2d(X, 2, 2)
 
     # Re-View data to flatten
-    X = X.view(-1, 16 * 5 * 5) # negative one to make batch size variable
+    X = X.view(-1, 16*5*5) # negative one to make batch size variable
 
     # FC layers
 
@@ -98,3 +100,103 @@ class ConvolutionalNetwork(NN.module):
     X = self.fc3(X) # No relu on last one because it is the output
 
     return F.log_softmax(X, dim=1)
+
+
+# Create Instance of model
+  
+torch.manual_seed(12)
+
+model = ConvolutionalNetwork()
+
+
+# Create loss function and optimizer
+
+criterion = NN.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001) # Smaller the lr, longer to train but better results
+
+start_time = time.time()
+
+# Create variables to track
+epochs = 5
+train_losses = []
+test_losses = []
+train_correct = []
+test_correct = []
+
+# For loop of epochs
+for i in range(epochs):
+  trn_correct = 0
+  tst_correct = 0
+
+  # Train
+  for b, (X_train, y_train) in enumerate(train_loader):
+    b += 1
+    y_pred = model(X_train) # Get predicted values from training set
+    loss = criterion(y_pred, y_train) # Check the loss
+    
+    predicted = torch.max(y_pred.data, 1)[1] # Add up the number of correct predictions (Indexed off first point)
+    batch_correct = (predicted == y_train).sum() # Want to know how many we got correct from this batch
+    trn_correct += batch_correct # Keep track of train correct
+
+    # Update params
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+    # Print results
+    if b%600 == 0:
+      print(f'Loss in epoch {i+1} and batch {b} is {loss.item()}')
+
+  train_losses.append(loss)
+  train_correct.append(trn_correct)
+
+
+  # Test
+  with torch.no_grad():
+    for b, (X_test, y_test) in enumerate(test_loader):
+      b += 1
+      y_val = model(X_test)
+      predicted = torch.max(y_val.data, 1)[1]
+      tst_correct += (predicted == y_test).sum()
+
+  loss = criterion(y_val, y_test)
+  test_losses.append(loss)
+  test_correct.append(tst_correct)
+
+current_time = time.time()
+
+total = current_time - start_time
+
+print(f'Training Took: {int(total/60)} minutes {int(total%60)} seconds')
+
+# Convert to numpy
+train_losses = [tl.item() for tl in train_losses]
+
+# Graph loss over epochs
+plt.plot(train_losses, label='Training Loss')
+plt.plot(test_losses, label='Test Loss')
+plt.title('Loss at Epoch')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
+
+#Graph accuracy
+plt.plot([t/600 for t in train_correct], label='Training Accuracy')
+plt.plot([t/100 for t in test_correct], label='Validation Accuracy')
+plt.title('Accuracy at the end of each Epoch')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
+
+test_load_everything = DataLoader(test_data, batch_size=10000, shuffle=False)
+
+with torch.no_grad():
+  correct = 0
+  for X_test, y_test in test_load_everything:
+    y_val = model(X_test)
+    predicted = torch.max(y_val, 1)[1]
+    correct += (predicted == y_test).sum()
+  
+print(correct.item()/len(test_data)*100, '% correct!')
