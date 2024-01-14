@@ -200,3 +200,17 @@ with torch.no_grad():
     correct += (predicted == y_test).sum()
   
 print(correct.item()/len(test_data)*100, '% correct!')
+
+
+# Grab an image to test
+test_data[2024] # Tensor with image in it
+
+# Grab just the data
+test_image = test_data[2024][0].reshape(28,28)
+plt.imshow(test_image)
+plt.show()
+
+model.eval()
+with torch.no_grad():
+  new_prediction = model(test_image.view(1,1,28,28))
+  print('Prediction is: ', new_prediction.argmax())
